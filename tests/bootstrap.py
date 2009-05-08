@@ -1,3 +1,7 @@
+
+copyrev: 1f5ea444069aaf73de5ea476e1d00f99c4330724
+copy: bootstrap.py
+
 ##############################################################################
 #
 # Copyright (c) 2006 Zope Corporation and Contributors.

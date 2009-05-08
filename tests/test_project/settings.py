@@ -1,3 +1,7 @@
+
+copyrev: 8a424c4ac3d6f7fca51a1e11adc43d25f4fdedd2
+copy: test_project/settings.py
+
 import os
 DEBUG = True
 DATABASE_ENGINE = 'sqlite3'

@@ -1,3 +1,7 @@
+
+copyrev: 8e340fc74e9ebbb9101ee8a046b45d2a7c5ec0e6
+copy: test_project/apps/testapp/tests.py
+
 from django.test import TestCase
 from django.contrib.auth.models import User
 import base64

@@ -1,3 +1,7 @@
+
+copyrev: 5d5145be2003803e707950c22c04a924fdab7d94
+copy: test_project/apps/testapp/handlers.py
+
 from django.core.paginator import Paginator
 
 from piston.handler import BaseHandler
