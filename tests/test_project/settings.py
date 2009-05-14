@@ -1,7 +1,3 @@
-
-copyrev: 8a424c4ac3d6f7fca51a1e11adc43d25f4fdedd2
-copy: test_project/settings.py
-
 import os
 DEBUG = True
 DATABASE_ENGINE = 'sqlite3'
@@ -17,3 +13,8 @@ TEMPLATE_DIRS = (
     os.path.join(os.path.dirname(__file__), 'templates'),
 )
 ROOT_URLCONF = 'test_project.urls'
+
+MIDDLEWARE_CLASSES = (
+    'piston.middleware.ConditionalMiddlewareCompatProxy',
+    'piston.middleware.CommonMiddlewareCompatProxy',
+)
