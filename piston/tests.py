@@ -126,7 +126,7 @@ class ErrorHandlerTest(TestCase):
         request.method = 'GET'
         response = resource(request, emitter_format='json')
 
-        self.assertEquals(401, response.status_code)
+        self.assertEquals(403, response.status_code)
 
         # verify the content we got back can be converted back to json 
         # and examine the dictionary keys all exist as expected

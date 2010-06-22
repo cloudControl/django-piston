@@ -79,6 +79,14 @@ rc = rc_factory()
 class FormValidationError(Exception):
     def __init__(self, form):
         self.form = form
+        
+    @property
+    def serializable_errors(self):
+        """
+        Serializable error can be serialized which is not the case of
+        form.errors.
+        """
+        return dict((key, unicode(values[0])) for key,values in self.form.errors.items())
 
 class HttpStatusCode(Exception):
     def __init__(self, response):

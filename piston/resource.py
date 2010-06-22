@@ -1,4 +1,5 @@
 import sys, inspect
+import json
 
 from django.http import (HttpResponse, Http404, HttpResponseNotAllowed,
     HttpResponseForbidden, HttpResponseServerError)
@@ -64,14 +65,21 @@ class Resource(object):
 
         return em
 
-    def form_validation_response(self, e):
+    def form_validation_response(self, e, em_format):
         """
         Method to return form validation error information. 
         You will probably want to override this in your own
         `Resource` subclass.
         """
         resp = rc.BAD_REQUEST
-        resp.write(' '+str(e.form.errors))
+        if em_format == 'json':
+            error_string = json.dumps(e.serializable_errors)
+        elif em_format == 'yaml' and yaml:
+            error_string = yaml.dump(e.serializable_errors)
+        else:
+            # Fallback to the previous behaviour for xml or yaml if yaml == None
+            error_string = str(e.form.errors) 
+        resp.write(' ' + error_string)
         return resp
 
     @property
@@ -247,7 +255,7 @@ class Resource(object):
         needs
         """
         if isinstance(e, FormValidationError):
-            return self.form_validation_response(e)
+            return self.form_validation_response(e, self.determine_emitter(request))
 
         elif isinstance(e, TypeError):
             result = rc.BAD_REQUEST
