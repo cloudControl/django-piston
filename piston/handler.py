@@ -51,6 +51,7 @@ class BaseHandler(object):
     anonymous = is_anonymous = False
     exclude = ( 'id', )
     fields =  ( )
+    private = is_private = False
 
     def flatten_dict(self, dct):
         return dict([ (str(k), dct.get(k)) for k in dct.keys() ])
