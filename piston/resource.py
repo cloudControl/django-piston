@@ -1,4 +1,4 @@
-import sys, inspect
+import sys
 import json
 
 try:
@@ -6,14 +6,12 @@ try:
 except ImportError:
     pass
 
-from django.http import (HttpResponse, Http404, HttpResponseNotAllowed,
-    HttpResponseForbidden, HttpResponseServerError)
+from django.http import HttpResponse, Http404, HttpResponseNotAllowed, HttpResponseServerError
 from django.views.debug import ExceptionReporter
 from django.views.decorators.vary import vary_on_headers
 from django.conf import settings
-from django.core.mail import send_mail, EmailMessage
+from django.core.mail import EmailMessage
 from django.db.models.query import QuerySet
-from django.http import Http404
 
 from emitters import Emitter
 from handler import typemapper
@@ -24,6 +22,7 @@ from utils import rc, format_error, translate_mime, MimerDataException
 
 CHALLENGE = object()
 
+
 class Resource(object):
     """
     Resource. Create one for your URL mappings, just
@@ -32,12 +31,12 @@ class Resource(object):
     is an authentication handler. If not specified,
     `NoAuthentication` will be used by default.
     """
-    callmap = { 'GET': 'read', 'POST': 'create',
-                'PUT': 'update', 'DELETE': 'delete' }
+    callmap = {'GET': 'read', 'POST': 'create',
+               'PUT': 'update', 'DELETE': 'delete'}
 
     def __init__(self, handler, authentication=None):
         if not callable(handler):
-            raise AttributeError, "Handler not callable."
+            raise AttributeError("Handler not callable.")
 
         self.handler = handler()
         self.csrf_exempt = getattr(self.handler, 'csrf_exempt', True)
@@ -73,7 +72,7 @@ class Resource(object):
 
     def form_validation_response(self, e, em_format):
         """
-        Method to return form validation error information. 
+        Method to return form validation error information.
         You will probably want to override this in your own
         `Resource` subclass.
         """
@@ -84,7 +83,7 @@ class Resource(object):
             error_string = yaml.dump(e.serializable_errors)
         else:
             # Fallback to the previous behaviour for xml or yaml if yaml == None
-            error_string = str(e.form.errors) 
+            error_string = str(e.form.errors)
         resp.write(' ' + error_string)
         return resp
 
@@ -192,15 +191,15 @@ class Resource(object):
         status_code = 200
 
         # If we're looking at a response object which contains non-string
-        # content, then assume we should use the emitter to format that 
+        # content, then assume we should use the emitter to format that
         # content
         if isinstance(result, HttpResponse) and not result._is_string:
             status_code = result.status_code
             # Note: We can't use result.content here because that method attempts
-            # to convert the content into a string which we don't want. 
+            # to convert the content into a string which we don't want.
             # when _is_string is False _container is the raw data
             result = result._container
-     
+
         srl = emitter(result, typemapper, handler, fields, anonymous)
 
         try:
@@ -210,8 +209,10 @@ class Resource(object):
             before sending it to the client. Won't matter for
             smaller datasets, but larger will have an impact.
             """
-            if self.stream: stream = srl.stream_render(request)
-            else: stream = srl.render(request)
+            if self.stream:
+                stream = srl.stream_render(request)
+            else:
+                stream = srl.render(request)
 
             if not isinstance(stream, HttpResponse):
                 resp = HttpResponse(stream, mimetype=ct, status=status_code)
@@ -231,9 +232,9 @@ class Resource(object):
         request object, and returns the sanitized version.
         """
         for method_type in ('GET', 'PUT', 'POST', 'DELETE'):
-            block = getattr(request, method_type, { })
+            block = getattr(request, method_type, {})
 
-            if True in [ k.startswith("oauth_") for k in block.keys() ]:
+            if True in [k.startswith("oauth_") for k in block.keys()]:
                 sanitized = block.copy()
 
                 for k in sanitized.keys():
@@ -250,17 +251,16 @@ class Resource(object):
         subject = "Piston crash report"
         html = reporter.get_traceback_html()
 
-        message = EmailMessage(settings.EMAIL_SUBJECT_PREFIX+subject,
+        message = EmailMessage(settings.EMAIL_SUBJECT_PREFIX + subject,
                                 html, settings.SERVER_EMAIL,
-                                [ admin[1] for admin in settings.ADMINS ])
+                                [admin[1] for admin in settings.ADMINS])
 
         message.content_subtype = 'html'
         message.send(fail_silently=True)
 
-
     def error_handler(self, e, request, meth, em_format):
         """
-        Override this method to add handling of errors customized for your 
+        Override this method to add handling of errors customized for your
         needs
         """
         if isinstance(e, FormValidationError):
@@ -288,8 +288,8 @@ class Resource(object):
 
         elif isinstance(e, HttpStatusCode):
             return e.response
- 
-        else: 
+
+        else:
             """
             On errors (like code errors), we'd like to be able to
             give crash reports to both admins and also the calling
