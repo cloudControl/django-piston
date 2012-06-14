@@ -1,10 +1,5 @@
 import sys
-import json
-
-try:
-    import yaml
-except ImportError:
-    pass
+import mimeparse
 
 import django
 from django.http import HttpResponse, Http404, HttpResponseNotAllowed, HttpResponseServerError
@@ -53,39 +48,44 @@ class Resource(object):
         self.email_errors = getattr(settings, 'PISTON_EMAIL_ERRORS', True)
         self.display_errors = getattr(settings, 'PISTON_DISPLAY_ERRORS', True)
         self.stream = getattr(settings, 'PISTON_STREAM_OUTPUT', False)
+        # Emitter selection
+        self.strict_accept = getattr(settings, 'PISTON_STRICT_ACCEPT_HANDLING',
+                                     False)
+        self.default_emitter = getattr(settings, 'PISTON_DEFAULT_EMITTER',
+                                       'json')
 
     def determine_emitter(self, request, *args, **kwargs):
         """
         Function for determening which emitter to use
         for output. It lives here so you can easily subclass
         `Resource` in order to change how emission is detected.
-
-        You could also check for the `Accept` HTTP header here,
-        since that pretty much makes sense. Refer to `Mimer` for
-        that as well.
         """
-        em = kwargs.pop('emitter_format', None)
+        try:
+            return kwargs['emitter_format']
+        except KeyError:
+            pass
+        if 'format' in request.GET:
+            return request.GET.get('format')
+        if 'HTTP_ACCEPT' in request.META:
+            supported_mime_types = set()
+            emitter_map = {}
+            for name, (klass, content_type) in Emitter.EMITTERS.items():
+                content_type_without_encoding = content_type.split(';')[0]
+                supported_mime_types.add(content_type_without_encoding)
+                emitter_map[content_type_without_encoding] = name
+            preferred_content_type = mimeparse.best_match(
+                list(supported_mime_types),
+                request.META['HTTP_ACCEPT'])
+            return emitter_map.get(preferred_content_type, None)
 
-        if not em:
-            em = request.GET.get('format', 'json')
-
-        return em
-
-    def form_validation_response(self, e, em_format):
+    def form_validation_response(self, e):
         """
         Method to return form validation error information.
         You will probably want to override this in your own
         `Resource` subclass.
         """
         resp = rc.BAD_REQUEST
-        if em_format == 'json':
-            error_string = json.dumps(e.serializable_errors)
-        elif em_format == 'yaml' and yaml:
-            error_string = yaml.dump(e.serializable_errors)
-        else:
-            # Fallback to the previous behaviour for xml or yaml if yaml == None
-            error_string = unicode(e.form.errors)
-        resp.write(u' ' + unicode(error_string))
+        resp.write(u' ' + unicode(e.form.errors))
         return resp
 
     @property
@@ -113,9 +113,7 @@ class Resource(object):
 
         for authenticator in self.authentication:
             if not authenticator.is_authenticated(request):
-                if self.anonymous and \
-                    rm in self.anonymous.allowed_methods:
-
+                if self.anonymous and rm in self.anonymous.allowed_methods:
                     actor, anonymous = self.anonymous(), True
                 else:
                     actor, anonymous = authenticator.challenge, CHALLENGE
@@ -165,6 +163,11 @@ class Resource(object):
 
         # Support emitter both through (?P<emitter_format>) and ?format=emitter.
         em_format = self.determine_emitter(request, *args, **kwargs)
+        if not em_format:
+            request_has_accept = 'HTTP_ACCEPT' in request.META
+            if request_has_accept and self.strict_accept:
+                return rc.NOT_ACCEPTABLE
+            em_format = self.default_emitter
 
         kwargs.pop('emitter_format', None)
 
@@ -263,8 +266,8 @@ class Resource(object):
         html = reporter.get_traceback_html()
 
         message = EmailMessage(settings.EMAIL_SUBJECT_PREFIX + subject,
-                                html, settings.SERVER_EMAIL,
-                                [admin[1] for admin in settings.ADMINS])
+                               html, settings.SERVER_EMAIL,
+                               [admin[1] for admin in settings.ADMINS])
 
         message.content_subtype = 'html'
         message.send(fail_silently=True)
