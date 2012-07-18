@@ -15,29 +15,34 @@ from datetime import datetime, timedelta
 
 __version__ = '0.2.3rc1'
 
+
 def get_version():
     return __version__
+
 
 def format_error(error):
     return u"Piston/%s (Django %s) crash report:\n\n%s" % \
         (get_version(), django_version(), error)
 
+
 class rc_factory(object):
     """
     Status codes.
     """
-    CODES = dict(ALL_OK = ('OK', 200),
-                 CREATED = ('Created', 201),
-                 DELETED = ('', 204), # 204 says "Don't send a body!"
-                 BAD_REQUEST = ('Bad Request', 400),
-                 UNAUTHORIZED = ('Unauthorized', 401),
-                 FORBIDDEN = ('Forbidden', 403),
-                 NOT_FOUND = ('Not Found', 404),
-                 DUPLICATE_ENTRY = ('Conflict/Duplicate', 409),
-                 NOT_HERE = ('Gone', 410),
-                 INTERNAL_ERROR = ('Internal Error', 500),
-                 NOT_IMPLEMENTED = ('Not Implemented', 501),
-                 THROTTLED = ('Throttled', 503))
+    CODES = dict(
+        ALL_OK=('OK', 200),
+        CREATED=('Created', 201),
+        DELETED=('', 204),  # 204 says "Don't send a body!"
+        BAD_REQUEST=('Bad Request', 400),
+        UNAUTHORIZED=('Unauthorized', 401),
+        FORBIDDEN=('Forbidden', 403),
+        NOT_FOUND=('Not Found', 404),
+        DUPLICATE_ENTRY=('Conflict/Duplicate', 409),
+        NOT_HERE=('Gone', 410),
+        INTERNAL_ERROR=('Internal Error', 500),
+        NOT_IMPLEMENTED=('Not Implemented', 501),
+        UNAVAILABLE=('Service Unavailable', 503)
+    )
 
     def __getattr__(self, attr):
         """
@@ -83,6 +88,7 @@ class rc_factory(object):
 
 rc = rc_factory()
 
+
 class FormValidationError(Exception):
     def __init__(self, form):
         self.form = form
@@ -93,12 +99,13 @@ class FormValidationError(Exception):
             Serializable error can be serialized which is not the case of
             form.errors.
         """
-        return dict((key, unicode(values[0])) for key,values in self.form.errors.items())
+        return dict((key, unicode(values[0])) for key, values in self.form.errors.items())
 
 
 class HttpStatusCode(Exception):
     def __init__(self, response):
         self.response = response
+
 
 def validate(v_form, operation='POST'):
     @decorator
@@ -112,7 +119,8 @@ def validate(v_form, operation='POST'):
             raise FormValidationError(form)
     return wrap
 
-def throttle(max_requests, timeout=60*60, extra=''):
+
+def throttle(max_requests, timeout=60 * 60, extra=''):
     """
     Simple throttling decorator, caches
     the amount of requests made in cache.
@@ -157,16 +165,17 @@ def throttle(max_requests, timeout=60*60, extra=''):
                 expiration = now + timeout
 
             if count >= max_requests and expiration > now:
-                t = rc.THROTTLED
+                t = rc.UNAVAILABLE
                 wait = int(expiration - now)
                 t.content = 'Throttled, wait %d seconds.' % wait
                 t['Retry-After'] = wait
                 return t
 
-            cache.set(ident, (count+1, expiration), (expiration - now))
+            cache.set(ident, (count + 1, expiration), (expiration - now))
 
         return f(self, request, *args, **kwargs)
     return wrap
+
 
 def coerce_put_post(request):
     """
@@ -210,6 +219,7 @@ class MimerDataException(Exception):
     Raised if the content_type and data don't match
     """
     pass
+
 
 class Mimer(object):
     TYPES = dict()
@@ -291,8 +301,10 @@ class Mimer(object):
     def unregister(cls, loadee):
         return cls.TYPES.pop(loadee)
 
+
 def translate_mime(request):
     request = Mimer(request).translate()
+
 
 def require_mime(*mimes):
     """
@@ -305,10 +317,12 @@ def require_mime(*mimes):
         m = Mimer(request)
         realmimes = set()
 
-        rewrite = { 'json':   'application/json',
-                    'yaml':   'application/x-yaml',
-                    'xml':    'text/xml',
-                    'pickle': 'application/python-pickle' }
+        rewrite = {
+            'json': 'application/json',
+            'yaml': 'application/x-yaml',
+            'xml': 'text/xml',
+            'pickle': 'application/python-pickle'
+        }
 
         for idx, mime in enumerate(mimes):
             realmimes.add(rewrite.get(mime, mime))
@@ -320,6 +334,7 @@ def require_mime(*mimes):
     return wrap
 
 require_extended = require_mime('json', 'yaml', 'xml', 'pickle')
+
 
 def send_consumer_mail(consumer):
     """
@@ -341,8 +356,9 @@ def send_consumer_mail(consumer):
     template = "piston/mails/consumer_%s.txt" % consumer.status
 
     try:
-        body = loader.render_to_string(template,
-            { 'consumer' : consumer, 'user' : consumer.user })
+        body = loader.render_to_string(template, {
+            'consumer': consumer, 'user': consumer.user
+        })
     except TemplateDoesNotExist:
         """
         They haven't set up the templates, which means they might not want
@@ -365,4 +381,3 @@ def send_consumer_mail(consumer):
         print "Mail being sent, to=%s" % consumer.user.email
         print "Subject: %s" % _(subject)
         print body
-
