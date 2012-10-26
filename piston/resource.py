@@ -268,15 +268,21 @@ class Resource(object):
 
         elif isinstance(e, TypeError):
             result = rc.BAD_REQUEST
-            hm = HandlerMethod(meth)
-            sig = hm.signature
 
             msg = 'Method signature does not match.\n\n'
 
-            if sig:
-                msg += 'Signature should be: %s' % sig
+            try:
+                hm = HandlerMethod(meth)
+                sig = hm.signature
+
+            except TypeError:
+                msg += 'Signature could not be determined'
+
             else:
-                msg += 'Resource does not expect any parameters.'
+                if sig:
+                    msg += 'Signature should be: %s' % sig
+                else:
+                    msg += 'Resource does not expect any parameters.'
 
             if self.display_errors:
                 msg += '\n\nException was: %s' % str(e)
