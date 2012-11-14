@@ -6,6 +6,7 @@ try:
 except ImportError:
     pass
 
+import django
 from django.http import HttpResponse, Http404, HttpResponseNotAllowed, HttpResponseServerError
 from django.views.debug import ExceptionReporter
 from django.views.decorators.vary import vary_on_headers
@@ -83,8 +84,8 @@ class Resource(object):
             error_string = yaml.dump(e.serializable_errors)
         else:
             # Fallback to the previous behaviour for xml or yaml if yaml == None
-            error_string = str(e.form.errors)
-        resp.write(' ' + error_string)
+            error_string = unicode(e.form.errors)
+        resp.write(u' ' + unicode(error_string))
         return resp
 
     @property
@@ -193,7 +194,7 @@ class Resource(object):
         # If we're looking at a response object which contains non-string
         # content, then assume we should use the emitter to format that
         # content
-        if isinstance(result, HttpResponse) and not result._is_string:
+        if self._use_emitter(result):
             status_code = result.status_code
             # Note: We can't use result.content here because that method attempts
             # to convert the content into a string which we don't want.
@@ -224,6 +225,16 @@ class Resource(object):
             return resp
         except HttpStatusCode, e:
             return e.response
+
+    @staticmethod
+    def _use_emitter(result):
+        """True iff result is a HttpResponse and contains non-string content."""
+        if not isinstance(result, HttpResponse):
+            return False
+        elif django.VERSION >= (1, 4):
+            return result._base_content_is_iter
+        else:
+            return not result._is_string
 
     @staticmethod
     def cleanup_request(request):
