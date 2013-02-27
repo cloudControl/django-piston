@@ -101,7 +101,11 @@ class Emitter(object):
             """
             ret = None
 
-            if isinstance(thing, QuerySet):
+            if hasattr(thing, '__emittable__'):
+                f = thing.__emittable__
+                if inspect.ismethod(f) and len(inspect.getargspec(f)[0]) == 1:
+                    ret = _any(f())
+            elif isinstance(thing, QuerySet):
                 ret = _qs(thing, fields)
             elif isinstance(thing, (tuple, list, set)):
                 ret = _list(thing, fields)
@@ -116,10 +120,6 @@ class Emitter(object):
             elif inspect.isfunction(thing):
                 if not inspect.getargspec(thing)[0]:
                     ret = _any(thing())
-            elif hasattr(thing, '__emittable__'):
-                f = thing.__emittable__
-                if inspect.ismethod(f) and len(inspect.getargspec(f)[0]) == 1:
-                    ret = _any(f())
             elif repr(thing).startswith("<django.db.models.fields.related.RelatedManager"):
                 ret = _any(thing.all())
             else:
@@ -170,8 +170,8 @@ class Emitter(object):
                 v = lambda f: getattr(data, f.attname)
 
                 if not fields and handler:
-                    fields = getattr(handler, 'fields')    
-                
+                    fields = getattr(handler, 'fields')
+
                 if not fields and hasattr(handler, 'fields'):
                     """
                     Fields was not specified, try to find teh correct
@@ -187,7 +187,7 @@ class Emitter(object):
                     if not get_fields:
                         get_fields = set([ f.attname.replace("_id", "", 1)
                             for f in data._meta.fields + data._meta.virtual_fields])
-                    
+
                     if hasattr(mapped, 'extra_fields'):
                         get_fields.update(mapped.extra_fields)
 
