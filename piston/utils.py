@@ -77,7 +77,15 @@ class rc_factory(object):
                 else:
                     self._is_string = is_string
 
-            content = property(HttpResponse._get_content, _set_content)
+                if django.VERSION >= (1, 5):
+                    # HttpResponse._get_content does not exists in Djnago 1.5
+
+                    @HttpResponse.content.setter
+                    def content(self, content):
+                        self._set_content(content)
+
+                else:
+                    content = property(HttpResponse._get_content, _set_content)
 
         return HttpResponseWrapper(r, content_type='text/plain', status=c)
 
